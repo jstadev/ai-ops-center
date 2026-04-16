@@ -76,11 +76,12 @@ cat > "$PLIST_PATH" <<EOF
   <key>RunAtLoad</key>
   <true/>
 
+  <!-- stdout + stderr both go to the same log file -->
   <key>StandardOutPath</key>
   <string>${LOG_DIR}/spitogatos.log</string>
 
   <key>StandardErrorPath</key>
-  <string>${LOG_DIR}/spitogatos_err.log</string>
+  <string>${LOG_DIR}/spitogatos.log</string>
 
   <!-- Keep alive only on crash, not on normal exit -->
   <key>KeepAlive</key>

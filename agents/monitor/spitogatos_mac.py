@@ -8,7 +8,7 @@ import hashlib
 import json
 import re
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import redis
@@ -161,7 +161,7 @@ def parse_card(card, property_type: str) -> Optional[dict]:
         "location": location,
         "size": size,
         "description": description,
-        "scraped_at": datetime.utcnow().isoformat(),
+        "scraped_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
