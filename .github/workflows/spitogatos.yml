@@ -1,0 +1,49 @@
+name: Spitogatos Scraper
+
+on:
+  schedule:
+    # Every 30 minutes
+    - cron: "0,30 * * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+          # ephemeral key so it doesn't accumulate devices
+          args: --accept-routes
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install playwright beautifulsoup4 redis loguru playwright-stealth
+
+      - name: Install Chromium
+        run: playwright install chromium --with-deps
+
+      - name: Verify Tailscale connectivity to VPS
+        run: |
+          echo "Pinging VPS at ${{ secrets.VPS_TAILSCALE_IP }}..."
+          ping -c 3 ${{ secrets.VPS_TAILSCALE_IP }} || echo "WARNING: ping failed (ICMP may be blocked), continuing anyway"
+
+      - name: Run scraper
+        env:
+          VPS_TAILSCALE_IP: ${{ secrets.VPS_TAILSCALE_IP }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+        run: |
+          python agents/monitor/spitogatos_scraper.py
