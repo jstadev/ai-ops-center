@@ -23,7 +23,6 @@ VPS_TAILSCALE_IP  = os.environ.get("VPS_TAILSCALE_IP", "100.113.88.103")
 REDIS_PORT        = int(os.environ.get("REDIS_PORT", "6379"))
 REDIS_PASSWORD    = os.environ["REDIS_PASSWORD"]
 
-INTERVAL_MINUTES  = 30
 REDIS_SEEN_KEY    = "spitogatos:seen_listings"
 REDIS_RESULTS_KEY = "spitogatos:new_listings"
 
@@ -187,58 +186,47 @@ def format_message(listing: dict) -> str:
 
 
 async def run():
-    print(f"\n🏠 Spitogatos Monitor (Mac)")
-    print(f"   Κατοικίες + Οικόπεδα — Κρήτη")
-    print(f"   Interval: every {INTERVAL_MINUTES} minutes")
-    print(f"   VPS Redis: {VPS_TAILSCALE_IP}:{REDIS_PORT}\n")
+    """Single-pass scrape. launchd calls this every 30 min via StartInterval."""
+    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Spitogatos scrape starting")
+    print(f"   VPS Redis: {VPS_TAILSCALE_IP}:{REDIS_PORT}")
 
     r = get_redis()
 
     try:
         r.ping()
-        print("✅ Redis connection OK\n")
+        print("Redis OK")
     except Exception as e:
-        print(f"❌ Redis connection failed: {e}")
-        print("   Check VPS_TAILSCALE_IP and REDIS_PASSWORD")
+        print(f"Redis connection failed: {e}")
+        logger.error(f"Redis connection failed: {e}")
         return
 
-    while True:
-        try:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Starting check...")
-            new_count = 0
+    new_count = 0
 
-            for source in URLS:
-                listings = await scrape_page(source["url"], source["type"])
-                print(f"  {source['type']}: {len(listings)} listings scraped")
+    for source in URLS:
+        listings = await scrape_page(source["url"], source["type"])
+        print(f"  {source['type']}: {len(listings)} listings scraped")
 
-                for listing in listings:
-                    lid = listing["id"]
+        for listing in listings:
+            lid = listing["id"]
 
-                    if r.sismember(REDIS_SEEN_KEY, lid):
-                        continue
+            if r.sismember(REDIS_SEEN_KEY, lid):
+                continue
 
-                    r.sadd(REDIS_SEEN_KEY, lid)
-                    new_count += 1
+            r.sadd(REDIS_SEEN_KEY, lid)
+            new_count += 1
 
-                    print(f"\n{'='*60}")
-                    print(f"  NEW: {listing['type']}")
-                    print(f"  {listing.get('title', '')}")
-                    print(f"  💰 {listing.get('price', 'N/A')}")
-                    print(f"  📍 {listing.get('location', 'N/A')}")
-                    print(f"  📐 {listing.get('size', 'N/A')}")
-                    print(f"  🔗 {listing['url']}")
-                    print(f"{'='*60}\n")
+            print(f"\n{'='*60}")
+            print(f"  NEW: {listing['type']}")
+            print(f"  {listing.get('title', '')}")
+            print(f"  Price   : {listing.get('price', 'N/A')}")
+            print(f"  Location: {listing.get('location', 'N/A')}")
+            print(f"  Size    : {listing.get('size', 'N/A')}")
+            print(f"  URL     : {listing['url']}")
+            print(f"{'='*60}\n")
 
-                    # Push to VPS Redis for Discord forwarding
-                    r.lpush(REDIS_RESULTS_KEY, json.dumps(listing))
+            r.lpush(REDIS_RESULTS_KEY, json.dumps(listing, ensure_ascii=False))
 
-            print(f"✅ Done — {new_count} new. Next check in {INTERVAL_MINUTES} min.\n")
-
-        except Exception as e:
-            logger.error(f"Error: {e}")
-            print(f"❌ Error: {e}")
-
-        await asyncio.sleep(INTERVAL_MINUTES * 60)
+    print(f"Done — {new_count} new listings pushed to Redis")
 
 
 if __name__ == "__main__":
