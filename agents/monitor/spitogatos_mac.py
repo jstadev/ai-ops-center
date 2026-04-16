@@ -18,9 +18,10 @@ from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
 # ── Config ────────────────────────────────────────────────
-VPS_TAILSCALE_IP  = "100.113.88.103"
-REDIS_PORT        = 6379
-REDIS_PASSWORD    = "909808Qa"
+# Load from env vars (set in your shell or .env file — never hardcode)
+VPS_TAILSCALE_IP  = os.environ.get("VPS_TAILSCALE_IP", "100.113.88.103")
+REDIS_PORT        = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_PASSWORD    = os.environ["REDIS_PASSWORD"]
 
 INTERVAL_MINUTES  = 30
 REDIS_SEEN_KEY    = "spitogatos:seen_listings"
