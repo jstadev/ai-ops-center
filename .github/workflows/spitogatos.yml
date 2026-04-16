@@ -42,5 +42,6 @@ jobs:
         env:
           VPS_TAILSCALE_IP: ${{ secrets.VPS_TAILSCALE_IP }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          PROXY_URL: ${{ secrets.PROXY_URL }}
         run: |
           python agents/monitor/spitogatos_scraper.py

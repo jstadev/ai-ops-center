@@ -27,6 +27,7 @@ from playwright_stealth import Stealth
 VPS_TAILSCALE_IP = os.environ["VPS_TAILSCALE_IP"]   # e.g. 100.113.88.103
 REDIS_PASSWORD   = os.environ["REDIS_PASSWORD"]
 REDIS_PORT       = int(os.environ.get("REDIS_PORT", "6379"))
+PROXY_URL        = os.environ.get("PROXY_URL")      # e.g. http://user:pass@p.webshare.io:80
 
 REDIS_SEEN_KEY    = "spitogatos:seen_listings"
 REDIS_RESULTS_KEY = "spitogatos:new_listings"
@@ -150,14 +151,18 @@ async def scrape_page(url: str, property_type: str) -> list[dict]:
                 "--disable-dev-shm-usage",
             ],
         )
+        proxy = {"server": PROXY_URL} if PROXY_URL else None
+        if proxy:
+            logger.info(f"Using proxy: {PROXY_URL.split('@')[-1]}")  # log host only, hide creds
+
         context = await browser.new_context(
             user_agent=USER_AGENT,
             locale="el-GR",
             timezone_id="Europe/Athens",
             viewport={"width": 1366, "height": 768},
-            # Lie about being a real desktop browser
             java_script_enabled=True,
             bypass_csp=False,
+            proxy=proxy,
         )
         page = await context.new_page()
 
