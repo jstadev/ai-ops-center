@@ -151,9 +151,17 @@ async def scrape_page(url: str, property_type: str) -> list[dict]:
                 "--disable-dev-shm-usage",
             ],
         )
-        proxy = {"server": PROXY_URL} if PROXY_URL else None
-        if proxy:
-            logger.info(f"Using proxy: {PROXY_URL.split('@')[-1]}")  # log host only, hide creds
+        # Build proxy config — split URL so Playwright handles auth correctly
+        proxy = None
+        if PROXY_URL:
+            from urllib.parse import urlparse
+            parsed = urlparse(PROXY_URL)
+            proxy = {
+                "server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}",
+                "username": parsed.username or "",
+                "password": parsed.password or "",
+            }
+            logger.info(f"Using proxy: {parsed.hostname}:{parsed.port}")
 
         context = await browser.new_context(
             user_agent=USER_AGENT,
@@ -180,7 +188,7 @@ async def scrape_page(url: str, property_type: str) -> list[dict]:
             response = await page.goto(
                 url,
                 wait_until="domcontentloaded",
-                timeout=45000,
+                timeout=90000,
             )
 
             status = response.status if response else "unknown"
